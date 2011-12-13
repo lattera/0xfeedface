@@ -56,9 +56,11 @@ DirectoryIndex index.php index.html index.htm
 <IfModule mod_rewrite.c>
   RewriteEngine on
 
+  # XXX 0xfeedface.org custom
+  # Forward old blog content over to http://archive.0xfeedface.org/
   RewriteRule ^blog/2011-12-0([0-7]+)/(.*)/(.*)$ http://archive.0xfeedface.org/ [L]
   RewriteRule ^blog/2011-1([0-1]+)-([0-3][0-9]+)/(.*)/(.*)$ http://archive.0xfeedface.org/ [L]
-  RewriteRule ^blog/2011-0([0-9]+)-([0-3][0-9]+])/(.*)/(.*)$ http://archive.0xfeedface.org/ [L]
+  RewriteRule ^blog/2011-0([0-9]+)-([0-3][0-9]+)/(.*)/(.*)$ http://archive.0xfeedface.org/ [L]
 
   # Block access to "hidden" directories whose names begin with a period. This
   # includes directories used by version control systems such as Subversion or
