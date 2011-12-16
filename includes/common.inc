@@ -1612,7 +1612,7 @@ function format_rss_item($title, $link, $description, $args = array()) {
   $newargs = array();
   foreach ($args as $arg) {
     foreach ($arg as $delta => $value) {
-      if (!strcmp($value, "guid"))
+      if (!strcmp(gettype($value), "string") && !strcmp($value, "guid"))
         $arg['value'] = '0xfeedface guid revision 1 - ' . $arg['value'];
     }
     $newargs[] = $arg;
