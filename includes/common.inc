@@ -1607,7 +1607,19 @@ function format_rss_item($title, $link, $description, $args = array()) {
   $output .= ' <title>' . check_plain($title) . "</title>\n";
   $output .= ' <link>' . check_url($link) . "</link>\n";
   $output .= ' <description>' . check_plain($description) . "</description>\n";
-  $output .= format_xml_elements($args);
+
+  /* XXX - 0xfeedface hack, ugly but works */
+  $newargs = array();
+  foreach ($args as $arg) {
+    foreach ($arg as $delta => $value) {
+      if (!strcmp($value, "guid"))
+        $arg['value'] = '0xfeedface guid revision 1 - ' . $arg['value'];
+    }
+    $newargs[] = $arg;
+  }
+  /* XXX - End of 0xfeedface hack */
+
+  $output .= format_xml_elements($newargs);
   $output .= "</item>\n";
 
   return $output;
