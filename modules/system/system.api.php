@@ -1908,7 +1908,7 @@ function hook_image_toolkits() {
  */
 function hook_mail_alter(&$message) {
   if ($message['id'] == 'modulename_messagekey') {
-    $message['body'][] = "--\nMail sent out from " . variable_get('sitename', t('Drupal'));
+    $message['body'][] = "--\nMail sent out from " . variable_get('site_name', t('Drupal'));
   }
 }
 
@@ -2653,7 +2653,7 @@ function hook_stream_wrappers_alter(&$wrappers) {
  *   An array of file objects, indexed by fid.
  *
  * @see file_load_multiple()
- * @see upload_file_load()
+ * @see file_load()
  */
 function hook_file_load($files) {
   // Add the upload specific data into the file object.
@@ -2778,7 +2778,6 @@ function hook_file_move($file, $source) {
  *   The file that has just been deleted.
  *
  * @see file_delete()
- * @see upload_file_delete()
  */
 function hook_file_delete($file) {
   // Delete all information associated with the file.
@@ -4104,7 +4103,7 @@ function hook_url_inbound_alter(&$path, $original_path, $path_language) {
  * @param $path
  *   The outbound path to alter, not adjusted for path aliases yet. It won't be
  *   adjusted for path aliases until all modules are finished altering it, thus
- *   being consistent with hook_url_alter_inbound(), which adjusts for all path
+ *   being consistent with hook_url_inbound_alter(), which adjusts for all path
  *   aliases before allowing modules to alter it. This may have been altered by
  *   other modules before this one.
  * @param $options
