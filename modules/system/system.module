@@ -1115,7 +1115,7 @@ function system_library() {
     'title' => 'Drupal progress indicator',
     'version' => VERSION,
     'js' => array(
-      'misc/progress.js' => array('group' => JS_DEFAULT, 'cache' => FALSE),
+      'misc/progress.js' => array('group' => JS_DEFAULT),
     ),
   );
 
@@ -3439,12 +3439,12 @@ function system_image_toolkits() {
 function system_retrieve_file($url, $destination = NULL, $managed = FALSE, $replace = FILE_EXISTS_RENAME) {
   $parsed_url = parse_url($url);
   if (!isset($destination)) {
-    $path = file_build_uri(basename($parsed_url['path']));
+    $path = file_build_uri(drupal_basename($parsed_url['path']));
   }
   else {
     if (is_dir(drupal_realpath($destination))) {
       // Prevent URIs with triple slashes when glueing parts together.
-      $path = str_replace('///', '//', "$destination/") . basename($parsed_url['path']);
+      $path = str_replace('///', '//', "$destination/") . drupal_basename($parsed_url['path']);
     }
     else {
       $path = $destination;
@@ -3879,7 +3879,10 @@ function system_date_format_save($date_format, $dfid = 0) {
     drupal_write_record('date_formats', $info, $keys);
   }
 
+  // Retrieve an array of language objects for enabled languages.
   $languages = language_list('enabled');
+  // This list is keyed off the value of $language->enabled; we want the ones
+  // that are enabled (value of 1).
   $languages = $languages[1];
 
   $locale_format = array();
