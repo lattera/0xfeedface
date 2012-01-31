@@ -2382,7 +2382,7 @@ function l($text, $path, array $options = array()) {
     // rendering.
     if (variable_get('theme_link', TRUE)) {
       drupal_theme_initialize();
-      $registry = theme_get_registry();
+      $registry = theme_get_registry(FALSE);
       // We don't want to duplicate functionality that's in theme(), so any
       // hint of a module or theme doing anything at all special with the 'link'
       // theme hook should simply result in theme() being called. This includes
@@ -7256,6 +7256,7 @@ function drupal_flush_all_caches() {
   system_rebuild_theme_data();
   drupal_theme_rebuild();
 
+  entity_info_cache_clear();
   node_types_rebuild();
   // node_menu() defines menu items based on node types so it needs to come
   // after node types are rebuilt.
