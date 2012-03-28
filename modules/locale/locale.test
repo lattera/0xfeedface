@@ -694,6 +694,136 @@ class LocaleTranslationFunctionalTest extends DrupalWebTestCase {
 }
 
 /**
+ * Tests plural index computation functionality.
+ */
+class LocalePluralFormatTest extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'Plural formula evaluation',
+      'description' => 'Tests plural formula evaluation for various languages.',
+      'group' => 'Locale',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('locale', 'locale_test');
+
+    $admin_user = $this->drupalCreateUser(array('administer languages', 'translate interface', 'access administration pages'));
+    $this->drupalLogin($admin_user);
+
+    // Import some .po files with formulas to set up the environment.
+    // These will also add the languages to the system and enable them.
+    $this->importPoFile($this->getPoFileWithSimplePlural(), array(
+      'langcode' => 'fr',
+    ));
+    $this->importPoFile($this->getPoFileWithComplexPlural(), array(
+      'langcode' => 'hr',
+    ));
+  }
+
+  /**
+   * Tests locale_get_plural() functionality.
+   */
+  function testGetPluralFormat() {
+    $this->drupalGet('locale_test_plural_format_page');
+    $tests = _locale_test_plural_format_tests();
+    $result = array();
+    foreach ($tests as $test) {
+      $this->assertPluralFormat($test['count'], $test['language'], $test['expected-result']);
+    }
+  }
+
+  /**
+   * Helper assert to test locale_get_plural page.
+   *
+   * @param $count
+   *  Number for testing.
+   * @param $lang
+   *  Language for testing
+   * @param $expected_result
+   *   Expected result.
+   * @param $message
+   */
+  function assertPluralFormat($count, $lang, $expected_result) {
+    $message_param =  array(
+      '@lang' => $lang,
+      '@count' => $count,
+      '@expected_result' => $expected_result,
+    );
+    $message = t("Computed plural index for '@lang' with count @count is @expected_result.", $message_param);
+
+    $message_param = array(
+      '@lang' => $lang,
+      '@expected_result' => $expected_result,
+    );
+    $this->assertText(format_string('Language: @lang, locale_get_plural: @expected_result.', $message_param, $message));
+  }
+
+  /**
+   * Imports a standalone .po file in a given language.
+   *
+   * @param $contents
+   *   Contents of the .po file to import.
+   * @param $options
+   *   Additional options to pass to the translation import form.
+   */
+  function importPoFile($contents, array $options = array()) {
+    $name = tempnam('temporary://', "po_") . '.po';
+    file_put_contents($name, $contents);
+    $options['files[file]'] = $name;
+    $this->drupalPost('admin/config/regional/translate/import', $options, t('Import'));
+    drupal_unlink($name);
+  }
+
+  /**
+   * Returns a .po file with a simple plural formula.
+   */
+  function getPoFileWithSimplePlural() {
+    return <<< EOF
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal 7\\n"
+"MIME-Version: 1.0\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+"Content-Transfer-Encoding: 8bit\\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\\n"
+
+msgid "One sheep"
+msgid_plural "@count sheep"
+msgstr[0] "un mouton"
+msgstr[1] "@count moutons"
+
+msgid "Monday"
+msgstr "lundi"
+EOF;
+  }
+
+  /**
+   * Returns a .po file with a complex plural formula.
+   */
+  function getPoFileWithComplexPlural() {
+    return <<< EOF
+msgid ""
+msgstr ""
+"Project-Id-Version: Drupal 7\\n"
+"MIME-Version: 1.0\\n"
+"Content-Type: text/plain; charset=UTF-8\\n"
+"Content-Transfer-Encoding: 8bit\\n"
+"Plural-Forms: nplurals=3; plural=n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2;\\n"
+
+msgid "1 hour"
+msgid_plural "@count hours"
+msgstr[0] "@count sat"
+msgstr[1] "@count sata"
+msgstr[2] "@count sati"
+
+msgid "Monday"
+msgstr "Ponedjeljak"
+EOF;
+  }
+}
+
+/**
  * Functional tests for the import of translation files.
  */
 class LocaleImportFunctionalTest extends DrupalWebTestCase {
@@ -2319,6 +2449,56 @@ class LocaleUILanguageNegotiationTest extends DrupalWebTestCase {
     $fields = $this->xpath('//div[@id="site-name"]//a[@rel="home" and @href=:url]//span', $args);
     $this->assertTrue($fields[0] == 'Drupal', t('URLs are rewritten using the browser language.'));
   }
+
+  /**
+   * Tests url() when separate domains are used for multiple languages.
+   */
+  function testLanguageDomain() {
+    // Add the Italian language, without protocol.
+    $langcode = 'it';
+    locale_add_language($langcode, 'Italian', 'Italian', LANGUAGE_LTR, 'it.example.com', '', TRUE, FALSE);
+
+    // Add the French language, with protocol.
+    $langcode = 'fr';
+    locale_add_language($langcode, 'French', 'French', LANGUAGE_LTR, 'http://fr.example.com', '', TRUE, FALSE);
+
+    // Enable language URL detection.
+    $negotiation = array_flip(array(LOCALE_LANGUAGE_NEGOTIATION_URL, LANGUAGE_NEGOTIATION_DEFAULT));
+    language_negotiation_set(LANGUAGE_TYPE_INTERFACE, $negotiation);
+
+    variable_set('locale_language_negotiation_url_part', 1);
+
+    global $is_https;
+    $languages = language_list();
+
+    foreach (array('it', 'fr') as $langcode) {
+      // Build the link we're going to test based on the clean url setting.
+      $link = (!empty($GLOBALS['conf']['clean_url'])) ? $langcode . '.example.com/admin' : $langcode . '.example.com/?q=admin';
+
+      // Test URL in another language.
+      // Base path gives problems on the testbot, so $correct_link is hard-coded.
+      // @see UrlAlterFunctionalTest::assertUrlOutboundAlter (path.test).
+      $url = url('admin', array('language' => $languages[$langcode]));
+      $url_scheme = ($is_https) ? 'https://' : 'http://';
+      $correct_link = $url_scheme . $link;
+      $this->assertTrue($url == $correct_link, t('The url() function returns the right url (@url) in accordance with the chosen language', array('@url' => $url . " == " . $correct_link)));
+
+      // Test https via options.
+      variable_set('https', TRUE);
+      $url = url('admin', array('https' => TRUE, 'language' => $languages[$langcode]));
+      $correct_link = 'https://' . $link;
+      $this->assertTrue($url == $correct_link, t('The url() function returns the right https url (via options) (@url) in accordance with the chosen language', array('@url' => $url . " == " . $correct_link)));
+      variable_set('https', FALSE);
+
+      // Test https via current url scheme.
+      $temp_https = $is_https;
+      $is_https = TRUE;
+      $url = url('admin', array('language' => $languages[$langcode]));
+      $correct_link = 'https://' . $link;
+      $this->assertTrue($url == $correct_link, t('The url() function returns the right url (via current url scheme) (@url) in accordance with the chosen language', array('@url' => $url . " == " . $correct_link)));
+      $is_https = $temp_https;
+    }
+  }
 }
 
 /**
@@ -2835,3 +3015,4 @@ class LocaleLanguageNegotiationInfoFunctionalTest extends DrupalWebTestCase {
     }
   }
 }
+
