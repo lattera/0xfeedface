@@ -651,16 +651,17 @@ function drupal_encode_path($path) {
  * @param $options
  *   An associative array of additional URL options to pass to url().
  * @param $http_response_code
- *   Valid values for an actual "goto" as per RFC 2616 section 10.3 are:
- *   - 301 Moved Permanently (the recommended value for most redirects)
- *   - 302 Found (default in Drupal and PHP, sometimes used for spamming search
- *         engines)
- *   - 303 See Other
- *   - 304 Not Modified
- *   - 305 Use Proxy
- *   - 307 Temporary Redirect (alternative to "503 Site Down for Maintenance")
- *   Note: Other values are defined by RFC 2616, but are rarely used and poorly
- *   supported.
+ *   The valid values for 3xx redirection status codes are defined in
+ *   @link http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3 RFC 2616 @endlink
+ *   and the
+ *   @link http://tools.ietf.org/html/draft-reschke-http-status-308-07 draft for the new HTTP status codes: @endlink
+ *   - 301: Moved Permanently (the recommended value for most redirects).
+ *   - 302: Found (default in Drupal and PHP, sometimes used for spamming search
+ *     engines).
+ *   - 303: See Other.
+ *   - 304: Not Modified.
+ *   - 305: Use Proxy.
+ *   - 307: Temporary Redirect.
  *
  * @see drupal_get_destination()
  * @see url()
@@ -3467,7 +3468,13 @@ function drupal_build_css_cache($css) {
   $data = '';
   $uri = '';
   $map = variable_get('drupal_css_cache_files', array());
-  $key = hash('sha256', serialize($css));
+  // Create a new array so that only the file names are used to create the hash.
+  // This prevents new aggregates from being created unnecessarily.
+  $css_data = array();
+  foreach ($css as $css_file) {
+    $css_data[] = $css_file['data'];
+  }
+  $key = hash('sha256', serialize($css_data));
   if (isset($map[$key])) {
     $uri = $map[$key];
   }
@@ -4828,7 +4835,13 @@ function drupal_build_js_cache($files) {
   $contents = '';
   $uri = '';
   $map = variable_get('drupal_js_cache_files', array());
-  $key = hash('sha256', serialize($files));
+  // Create a new array so that only the file names are used to create the hash.
+  // This prevents new aggregates from being created unnecessarily.
+  $js_data = array();
+  foreach ($files as $file) {
+    $js_data[] = $file['data'];
+  }
+  $key = hash('sha256', serialize($js_data));
   if (isset($map[$key])) {
     $uri = $map[$key];
   }
