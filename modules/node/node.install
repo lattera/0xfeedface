@@ -890,7 +890,7 @@ function node_update_7012() {
       ->execute();
 
     // Switch field languages to LANGUAGE_NONE, since initially they were
-    // assigned $node->language.
+    // assigned the node language.
     foreach (array('field_data_body', 'field_revision_body') as $table) {
       db_update($table)
         ->fields(array('language' => LANGUAGE_NONE))
@@ -915,5 +915,5 @@ function node_update_7013() {
 }
 
 /**
- * @} End of "addtogroup updates-6.x-to-7.x"
+ * @} End of "addtogroup updates-6.x-to-7.x".
  */

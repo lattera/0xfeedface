@@ -988,6 +988,9 @@ abstract class DatabaseConnection extends PDO {
    * @param $name
    *   Optional name of the savepoint.
    *
+   * @return DatabaseTransaction
+   *   A DatabaseTransaction object.
+   *
    * @see DatabaseTransaction
    */
   public function startTransaction($name = '') {
@@ -2669,7 +2672,7 @@ function db_condition($conjunction) {
 
 
 /**
- * @ingroup schemaapi
+ * @addtogroup schemaapi
  * @{
  */
 
@@ -2986,7 +2989,7 @@ function db_change_field($table, $field, $field_new, $spec, $keys_new = array())
 }
 
 /**
- * @} End of "ingroup schemaapi".
+ * @} End of "addtogroup schemaapi".
  */
 
 /**

@@ -647,11 +647,13 @@ function drupal_encode_path($path) {
  * callback.
  *
  * @param $path
- *   A Drupal path or a full URL.
+ *   (optional) A Drupal path or a full URL, which will be passed to url() to
+ *   compute the redirect for the URL.
  * @param $options
- *   An associative array of additional URL options to pass to url().
+ *   (optional) An associative array of additional URL options to pass to url().
  * @param $http_response_code
- *   The valid values for 3xx redirection status codes are defined in
+ *   (optional) The HTTP status code to use for the redirection, defaults to
+ *   302. The valid values for 3xx redirection status codes are defined in
  *   @link http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.3 RFC 2616 @endlink
  *   and the
  *   @link http://tools.ietf.org/html/draft-reschke-http-status-308-07 draft for the new HTTP status codes: @endlink
@@ -1100,7 +1102,7 @@ function fix_gpc_magic() {
 /**
  * Verifies the syntax of the given e-mail address.
  *
- * Empty e-mail addresses are allowed. See RFC 2822 for details.
+ * See @link http://tools.ietf.org/html/rfc5321 RFC 5321 @endlink for details.
  *
  * @param $mail
  *   A string containing an e-mail address.
@@ -2054,8 +2056,9 @@ function format_username($account) {
  * alternative than url().
  *
  * @param $path
- *   The internal path or external URL being linked to, such as "node/34" or
- *   "http://example.com/foo". A few notes:
+ *   (optional) The internal path or external URL being linked to, such as
+ *   "node/34" or "http://example.com/foo". The default value is equivalent to
+ *   passing in '<front>'. A few notes:
  *   - If you provide a full URL, it will be considered an external URL.
  *   - If you provide only the path (e.g. "node/34"), it will be
  *     considered an internal link. In this case, it should be a system URL,
@@ -2071,7 +2074,8 @@ function format_username($account) {
  *     include them in $path, or use $options['query'] to let this function
  *     URL encode them.
  * @param $options
- *   An associative array of additional options, with the following elements:
+ *   (optional) An associative array of additional options, with the following
+ *   elements:
  *   - 'query': An array of query key/value-pairs (without any URL-encoding) to
  *     append to the URL.
  *   - 'fragment': A fragment identifier (named anchor) to append to the URL.
@@ -5663,8 +5667,9 @@ function drupal_render_page($page) {
  * any children, it is the responsibility of the theme function to render
  * these children. For elements that are not allowed to have any children,
  * e.g. buttons or textfields, the theme function can be used to render the
- * element itself. If #theme is not present and the element has children, they
- * are rendered and concatenated into a string by drupal_render_children().
+ * element itself. If #theme is not present and the element has children, each
+ * child is itself rendered by a call to drupal_render(), and the results are
+ * concatenated.
  *
  * The #theme_wrappers property contains an array of theme functions which will
  * be called, in order, after #theme has run. These can be used to add further
@@ -6758,7 +6763,7 @@ function drupal_common_theme() {
 }
 
 /**
- * @ingroup schemaapi
+ * @addtogroup schemaapi
  * @{
  */
 
@@ -7061,7 +7066,7 @@ function drupal_write_record($table, &$record, $primary_keys = array()) {
 }
 
 /**
- * @} End of "ingroup schemaapi".
+ * @} End of "addtogroup schemaapi".
  */
 
 /**
@@ -7782,6 +7787,44 @@ function entity_label($entity_type, $entity) {
   }
 
   return $label;
+}
+
+/**
+ * Returns the language of an entity.
+ *
+ * @param $entity_type
+ *   The entity type; e.g., 'node' or 'user'.
+ * @param $entity
+ *   The entity for which to get the language.
+ *
+ * @return
+ *   A valid language code or NULL if the entity has no language support.
+ */
+function entity_language($entity_type, $entity) {
+  $info = entity_get_info($entity_type);
+
+  // Invoke the callback to get the language. If there is no callback, try to
+  // get it from a property of the entity, otherwise NULL.
+  if (isset($info['language callback']) && function_exists($info['language callback'])) {
+    $langcode = $info['language callback']($entity_type, $entity);
+  }
+  elseif (!empty($info['entity keys']['language']) && isset($entity->{$info['entity keys']['language']})) {
+    $langcode = $entity->{$info['entity keys']['language']};
+  }
+  else {
+    // The value returned in D8 would be LANGUAGE_NONE, we cannot use it here to
+    // preserve backward compatibility. In fact this function has been
+    // introduced very late in the D7 life cycle, mainly as the proper default
+    // for field_attach_form(). By returning LANGUAGE_NONE when no language
+    // information is available, we would introduce a potentially BC-breaking
+    // API change, since field_attach_form() defaults to the default language
+    // instead of LANGUAGE_NONE. Moreover this allows us to distinguish between
+    // entities that have no language specified from ones that do not have
+    // language support at all.
+    $langcode = NULL;
+  }
+
+  return $langcode;
 }
 
 /**

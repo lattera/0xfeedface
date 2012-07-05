@@ -2699,7 +2699,7 @@ function request_path() {
     return $path;
   }
 
-  if (isset($_GET['q'])) {
+  if (isset($_GET['q']) && is_string($_GET['q'])) {
     // This is a request with a ?q=foo/bar query string. $_GET['q'] is
     // overwritten in drupal_path_initialize(), but request_path() is called
     // very early in the bootstrap process, so the original value is saved in
@@ -2830,7 +2830,7 @@ function ip_address() {
 }
 
 /**
- * @ingroup schemaapi
+ * @addtogroup schemaapi
  * @{
  */
 
@@ -2952,12 +2952,12 @@ function drupal_get_complete_schema($rebuild = FALSE) {
 }
 
 /**
- * @} End of "ingroup schemaapi".
+ * @} End of "addtogroup schemaapi".
  */
 
 
 /**
- * @ingroup registry
+ * @addtogroup registry
  * @{
  */
 
@@ -3119,7 +3119,7 @@ function registry_update() {
 }
 
 /**
- * @} End of "ingroup registry".
+ * @} End of "addtogroup registry".
  */
 
 /**

@@ -1,8 +1,28 @@
 
 Drupal 7.15, xxxx-xx-xx (development version)
 -----------------------
-
-
+- Fixed notice: Undefined index: default_image in image_field_prepare_view()
+- Fixed data loss issue due to field_has_data() returning inconsistent results.
+  The fix adds an optional DANGEROUS_ACCESS_CHECK_OPT_OUT tag to entity field
+  queries which field storage engines can respond to (API addition:
+  http://drupal.org/node/1597378).
+- Fixed issue where field form structure was incomplete if field_access()
+  returned FALSE. Instead of being incomplete, the form structure now has
+  #access set to FALSE and field form validation is skipped (array structure
+  change).
+- Added EntityFieldQuery support for taxonomy bundles.
+- Introduced generic entity language support. Entities may now declare their
+  language property in hook_entity_info(), and modules working with entities
+  may access the language using entity_language() (API change:
+  http://drupal.org/node/1626346).
+- Fixed regression: The first plural index on a page was not calculated
+  correctly.
+- Fixed bug: Language detection by domain only worked on port 80.
+- Fixed bug which prevented image styles from being deleted on PHP 5.4.
+- Made Ajax alert dialogs respect error reporting settings.
+- Fixed bug which prevented the jQuery UI Datepicker from being localized.
+- Fixed bug which prevented sub-themes from inheriting the default values of
+  theme settings defined by the base theme.
 
 Drupal 7.14 2012-05-02
 ----------------------
@@ -52,7 +72,6 @@ Drupal 7.14 2012-05-02
     case.
   - system_update_7061() converts filepaths too aggressively.
   - Trigger upgrade path: Node triggers removed when upgrading to 7-x from 6.25.
-
 
 Drupal 7.13 2012-05-02
 ----------------------
