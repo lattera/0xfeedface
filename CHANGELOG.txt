@@ -23,6 +23,14 @@ Drupal 7.15, xxxx-xx-xx (development version)
 - Fixed bug which prevented the jQuery UI Datepicker from being localized.
 - Fixed bug which prevented sub-themes from inheriting the default values of
   theme settings defined by the base theme.
+- Fixed bug which prevented notifications from being sent when core, module, and
+  theme updates are available.
+- Performance improvement: Removed needless call to system_rebuild_module_data()
+  in field_sync_field_status(), greatly speeding up bulk module enable/disable.
+- Renamed the "Field" column on the Manage Fields screen to "Field type", since
+  the former was confusing and inaccurate (UI change).
+- Fixed bug which made it impossible to search for strings that have not been
+  translated into a particular language.
 
 Drupal 7.14 2012-05-02
 ----------------------
