@@ -296,6 +296,7 @@ class DrupalDefaultEntityController implements DrupalEntityControllerInterface {
 
   /**
    * Attaches data to entities upon loading.
+   *
    * This will attach fields, if the entity is fieldable. It calls
    * hook_entity_load() for modules which need to add data to all entities.
    * It also calls hook_TYPE_load() on the loaded entities. For example
@@ -415,13 +416,14 @@ class EntityFieldQueryException extends Exception {}
  * an EntityFieldQueryException will be raised if an unsupported condition is
  * specified or if the query has field conditions or sorts that are stored in
  * different field storage engines. However, this logic can be overridden in
- * hook_entity_query().
+ * hook_entity_query_alter().
  *
  * Also note that this query does not automatically respect entity access
  * restrictions. Node access control is performed by the SQL storage engine but
  * other storage engines might not do this.
  */
 class EntityFieldQuery {
+
   /**
    * Indicates that both deleted and non-deleted fields should be returned.
    *
@@ -958,7 +960,7 @@ class EntityFieldQuery {
   }
 
   /**
-   * Enable a pager for the query.
+   * Enables a pager for the query.
    *
    * @param $limit
    *   An integer specifying the number of elements per page.  If passed a false
@@ -986,10 +988,11 @@ class EntityFieldQuery {
   }
 
   /**
-   * Enable sortable tables for this query.
+   * Enables sortable tables for this query.
    *
    * @param $headers
-   *   An EFQ Header array based on which the order clause is added to the query.
+   *   An EFQ Header array based on which the order clause is added to the
+   *   query.
    *
    * @return EntityFieldQuery
    *   The called object.
@@ -1204,7 +1207,7 @@ class EntityFieldQuery {
     $select_query->addExpression(':entity_type', 'entity_type', array(':entity_type' => $entity_type));
     // Process the property conditions.
     foreach ($this->propertyConditions as $property_condition) {
-      $this->addCondition($select_query, "$base_table." . $property_condition['column'], $property_condition);
+      $this->addCondition($select_query, $base_table . '.' . $property_condition['column'], $property_condition);
     }
     // Process the four possible entity condition.
     // The id field is always present in entity keys.
@@ -1212,7 +1215,7 @@ class EntityFieldQuery {
     $id_map['entity_id'] = $sql_field;
     $select_query->addField($base_table, $sql_field, 'entity_id');
     if (isset($this->entityConditions['entity_id'])) {
-      $this->addCondition($select_query, $sql_field, $this->entityConditions['entity_id']);
+      $this->addCondition($select_query, $base_table . '.' . $sql_field, $this->entityConditions['entity_id']);
     }
 
     // If there is a revision key defined, use it.
@@ -1220,7 +1223,7 @@ class EntityFieldQuery {
       $sql_field = $entity_info['entity keys']['revision'];
       $select_query->addField($base_table, $sql_field, 'revision_id');
       if (isset($this->entityConditions['revision_id'])) {
-        $this->addCondition($select_query, $sql_field, $this->entityConditions['revision_id']);
+        $this->addCondition($select_query, $base_table . '.' . $sql_field, $this->entityConditions['revision_id']);
       }
     }
     else {
@@ -1245,7 +1248,13 @@ class EntityFieldQuery {
     }
     $id_map['bundle'] = $sql_field;
     if (isset($this->entityConditions['bundle'])) {
-      $this->addCondition($select_query, $sql_field, $this->entityConditions['bundle'], $having);
+      if (!empty($entity_info['entity keys']['bundle'])) {
+        $this->addCondition($select_query, $base_table . '.' . $sql_field, $this->entityConditions['bundle'], $having);
+      }
+      else {
+        // This entity has no bundle, so invalidate the query.
+        $select_query->where('1 = 0');
+      }
     }
 
     // Order the query.
@@ -1258,7 +1267,7 @@ class EntityFieldQuery {
         $select_query->orderBy($id_map[$key], $order['direction']);
       }
       elseif ($order['type'] == 'property') {
-        $select_query->orderBy("$base_table." . $order['specifier'], $order['direction']);
+        $select_query->orderBy($base_table . '.' . $order['specifier'], $order['direction']);
       }
     }
 
@@ -1266,7 +1275,7 @@ class EntityFieldQuery {
   }
 
   /**
-   * Get the total number of results and initialize a pager for the query.
+   * Gets the total number of results and initializes a pager for the query.
    *
    * The pager can be disabled by either setting the pager limit to 0, or by
    * setting this query to be a count query.
@@ -1353,6 +1362,6 @@ class EntityFieldQuery {
 }
 
 /**
- * Exception thrown when a malformed entity is passed.
+ * Defines an exception thrown when a malformed entity is passed.
  */
 class EntityMalformedException extends Exception { }

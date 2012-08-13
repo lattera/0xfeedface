@@ -3016,20 +3016,12 @@ function system_update_7073() {
 }
 
 /**
- * Convert menu_links query strings to arrays.
+ * This update has been removed and will not run.
  */
 function system_update_7074() {
-  $mlids = db_select('menu_links', 'ml')
-    ->fields('ml', array('mlid'))
-    ->condition('options', '%query%', 'LIKE')
-    ->execute()->fetchCol();
-  foreach ($mlids as $mlid) {
-    $menu_link = menu_link_load($mlid);
-    if (is_string($menu_link['options']['query'])) {
-      $menu_link['options']['query'] = drupal_get_query_array($menu_link['options']['query']);
-      menu_link_save($menu_link);
-    }
-  }
+  // This update function previously converted menu_links query strings to
+  // arrays. It has been removed for now due to incompatibility with
+  // PostgreSQL.
 }
 
 /**

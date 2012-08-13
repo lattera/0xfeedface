@@ -6231,7 +6231,19 @@ function element_info_property($type, $property_name, $default = NULL) {
 }
 
 /**
- * Function used by uasort to sort structured arrays by weight, without the property weight prefix.
+ * Sorts a structured array by the 'weight' element.
+ *
+ * Note that the sorting is by the 'weight' array element, not by the render
+ * element property '#weight'.
+ *
+ * Callback for uasort() used in various functions.
+ *
+ * @param $a
+ *   First item for comparison. The compared items should be associative arrays
+ *   that optionally include a 'weight' element. For items without a 'weight'
+ *   element, a default value of 0 will be used.
+ * @param $b
+ *   Second item for comparison.
  */
 function drupal_sort_weight($a, $b) {
   $a_weight = (is_array($a) && isset($a['weight'])) ? $a['weight'] : 0;
@@ -6505,7 +6517,7 @@ function drupal_array_set_nested_value(array &$array, array $parents, $value, $f
  *
  * @see drupal_array_set_nested_value()
  */
-function drupal_array_get_nested_value(array &$array, array $parents, &$key_exists = NULL) {
+function &drupal_array_get_nested_value(array &$array, array $parents, &$key_exists = NULL) {
   $ref = &$array;
   foreach ($parents as $parent) {
     if (is_array($ref) && array_key_exists($parent, $ref)) {
@@ -6513,7 +6525,8 @@ function drupal_array_get_nested_value(array &$array, array $parents, &$key_exis
     }
     else {
       $key_exists = FALSE;
-      return NULL;
+      $null = NULL;
+      return $null;
     }
   }
   $key_exists = TRUE;
@@ -7448,12 +7461,12 @@ function drupal_check_incompatibility($v, $current_version) {
 /**
  * Get the entity info array of an entity type.
  *
- * @see hook_entity_info()
- * @see hook_entity_info_alter()
- *
  * @param $entity_type
  *   The entity type, e.g. node, for which the info shall be returned, or NULL
  *   to return an array with info about all types.
+ *
+ * @see hook_entity_info()
+ * @see hook_entity_info_alter()
  */
 function entity_get_info($entity_type = NULL) {
   global $language;
@@ -7541,12 +7554,13 @@ function entity_info_cache_clear() {
  *   The entity type; e.g. 'node' or 'user'.
  * @param $entity
  *   The entity from which to extract values.
+ *
  * @return
  *   A numerically indexed array (not a hash table) containing these
  *   elements:
- *   0: primary id of the entity
- *   1: revision id of the entity, or NULL if $entity_type is not versioned
- *   2: bundle name of the entity
+ *   - 0: Primary ID of the entity.
+ *   - 1: Revision ID of the entity, or NULL if $entity_type is not versioned.
+ *   - 2: Bundle name of the entity, or NULL if $entity_type has no bundles.
  */
 function entity_extract_ids($entity_type, $entity) {
   $info = entity_get_info($entity_type);
@@ -7579,13 +7593,12 @@ function entity_extract_ids($entity_type, $entity) {
  * @param $entity_type
  *   The entity type; e.g. 'node' or 'user'.
  * @param $ids
- *   A numerically indexed array, as returned by entity_extract_ids(),
- *   containing these elements:
- *   0: primary id of the entity
- *   1: revision id of the entity, or NULL if $entity_type is not versioned
- *   2: bundle name of the entity, or NULL if $entity_type has no bundles
+ *   A numerically indexed array, as returned by entity_extract_ids().
+ *
  * @return
  *   An entity structure, initialized with the ids provided.
+ *
+ * @see entity_extract_ids()
  */
 function entity_create_stub_entity($entity_type, $ids) {
   $entity = new stdClass();
@@ -7615,11 +7628,6 @@ function entity_create_stub_entity($entity_type, $ids) {
  * DrupalDefaultEntityController class. See node_entity_info() and the
  * NodeController in node.module as an example.
  *
- * @see hook_entity_info()
- * @see DrupalEntityControllerInterface
- * @see DrupalDefaultEntityController
- * @see EntityFieldQuery
- *
  * @param $entity_type
  *   The entity type to load, e.g. node or user.
  * @param $ids
@@ -7637,6 +7645,11 @@ function entity_create_stub_entity($entity_type, $ids) {
  *   found, an empty array is returned.
  *
  * @todo Remove $conditions in Drupal 8.
+ *
+ * @see hook_entity_info()
+ * @see DrupalEntityControllerInterface
+ * @see DrupalDefaultEntityController
+ * @see EntityFieldQuery
  */
 function entity_load($entity_type, $ids = FALSE, $conditions = array(), $reset = FALSE) {
   if ($reset) {
@@ -7656,7 +7669,7 @@ function entity_load($entity_type, $ids = FALSE, $conditions = array(), $reset =
  * @param $entity_type
  *   The entity type to load, e.g. node or user.
  * @param $id
- *   The id of the entity to load.
+ *   The ID of the entity to load.
  *
  * @return
  *   The unchanged entity, or FALSE if the entity cannot be loaded.
@@ -7693,7 +7706,6 @@ function entity_get_controller($entity_type) {
  * recursion. By convention, entity_prepare_view() is called after
  * field_attach_prepare_view() to allow entity level hooks to act on content
  * loaded by field API.
- * @see hook_entity_prepare_view()
  *
  * @param $entity_type
  *   The type of entity, i.e. 'node', 'user'.
@@ -7702,6 +7714,8 @@ function entity_get_controller($entity_type) {
  * @param $langcode
  *   (optional) A language code to be used for rendering. Defaults to the global
  *   content language of the current request.
+ *
+ * @see hook_entity_prepare_view()
  */
 function entity_prepare_view($entity_type, $entities, $langcode = NULL) {
   if (!isset($langcode)) {
@@ -7832,7 +7846,7 @@ function entity_language($entity_type, $entity) {
 }
 
 /**
- * Helper function for attaching field API validation to entity forms.
+ * Attaches field API validation to entity forms.
  */
 function entity_form_field_validate($entity_type, $form, &$form_state) {
   // All field attach API functions act on an entity object, but during form
@@ -7845,7 +7859,7 @@ function entity_form_field_validate($entity_type, $form, &$form_state) {
 }
 
 /**
- * Helper function for copying submitted values to entity properties for simple entity forms.
+ * Copies submitted values to entity properties for simple entity forms.
  *
  * During the submission handling of an entity form's "Save", "Preview", and
  * possibly other buttons, the form state's entity needs to be updated with the
