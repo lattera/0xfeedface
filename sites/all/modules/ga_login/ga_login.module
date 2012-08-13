@@ -1,0 +1,329 @@
+<?php
+// $Id
+
+/**
+ * Implements hook_menu().
+ *
+ * @see: http://api.drupal.org/api/function/hook_menu/6
+ */
+function ga_login_menu() {
+  $items = array();
+  $items['ga_login/test'] = array(
+    'type' => MENU_NORMAL_ITEM,
+    'title' => 'Test GA login',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ga_login_test_form'),
+    'access arguments' => array('create others login codes'),
+  );
+
+  $items['user/%user/ga_login'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'title' => 'GA login',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ga_login_create_form', 1),
+    'access callback' => 'ga_login_create_access',
+    'access arguments' => array(1),
+  );
+
+  return $items;
+}
+
+/**
+ * Access callback.
+ */
+function ga_login_create_access($target_account, $account = NULL) {
+  if (is_null($account)) {
+    global $user;
+    $account = $user;
+  }
+  if ($account->uid == $target_account->uid) {
+    return user_access('create own login code', $account) || user_access('create others login codes', $account);
+  }
+  return user_access('create others login codes', $account);
+}
+
+/**
+ * Implements hook_permission().
+ */
+function ga_login_permission() {
+  return array(
+    'create own login code' => array(
+      'title' => t('Create own login code'),
+      'description' => t('Allows users to create their own GA login code'),
+    ),
+    'create others login codes' => array(
+      'title' => t('Create others\' login codes'),
+      'description' => t('Allows users to create others\' GA login codes'),
+      'restrict access' => TRUE,
+    ),
+    'login without code' => array(
+      'title' => t('Login without code'),
+      'description' => t('With this permission, users don\'t have to fill in the GA login code'),
+      'restrict access' => TRUE,
+    )
+  );
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_create_form($form, &$form_state, $account) {
+  $img = "";
+  $file = "";
+  module_load_include('php', 'ga_login', 'ga_login.class');
+  $ga = new ga_loginGA(10);
+  if (!$ga->hasToken($account->name . '@' . variable_get('site_name', 'Drupal'))) {
+    $key = $ga->setUser($account->name . '@' . variable_get('site_name', 'Drupal'));
+  }
+  $url = $ga->createUrl($account->name . '@' . variable_get('site_name', 'Drupal'));
+  $form['url'] = array(
+    '#type' => 'item',
+    '#markup' => $url,
+    '#title' => t('URL'),
+  );
+  if (module_exists('mobile_codes')) {
+    $variables = array(
+      'data' => $url,
+      'attributes' => array(
+        '#preset' => 'ga_login',
+      ),
+    );
+
+    $path = mobile_codes_process_url($variables['data'], $variables['attributes']);
+    if (file_exists($file = 'public://mobile_codes/' . md5(serialize($path)) . '.png')) {
+      $img = theme('mobilecode', $variables);
+    }
+  }
+  else if (module_exists('qr_codes')) {
+    $variables = array('data' => $url, 'width' => 200, 'height' => 200, 'margin' => 0, 'attributes' => array());
+    $imagename = md5($variables['data'] . $variables['width'] . $variables['height'] . $variables['margin']) . '.png';
+    $dir = 'public://' . variable_get('qr_codes_cache_dir', 'qr_codes') . '/';
+    if (file_exists($file = $dir . $imagename)) {
+      $img = theme('qr_codes', $variables);
+    }
+  }
+  if (!empty($img)) {
+    _ga_login_code_approve_form($form, $file, $account, $img);
+  }
+  else {
+    _ga_login_create_form($form, $account);
+  }
+  return $form;
+}
+
+function _ga_login_code_approve_form (&$form, $file, $account, $img) {
+  $form['code_image_path'] = array(
+    '#type' => 'value',
+    '#value' => $file,
+  );
+  $form['uid'] = array(
+    '#type' => 'value',
+    '#value' => $account->uid,
+  );
+  $form['current'] = array(
+    '#type' => 'item',
+    '#title' => t('Current'),
+    '#markup' => $img,
+  );
+  $form['approve_current'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('I have successfully scanned the current code'),
+    '#description' => t('Warning! If you check this box and press Submit, this image will be deleted for security reasons. You can always create a new code afterwards.'),
+    '#required' => TRUE,
+  );
+  $form['approve_current_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Submit'),
+  );
+}
+
+function _ga_login_create_form(&$form, $account) {
+  $form['info'] = array(
+    '#type' => 'item',
+    '#markup' => t('Everytime you use this form a new key will be generated!'),
+    '#weight' => -1,
+  );
+  $form['uid'] = array(
+    '#type' => 'value',
+    '#value' => $account->uid,
+  );
+  $form['tokentype'] = array(
+    '#title' => t('Token type'),
+    '#type' => 'select',
+    '#options' => array(
+      'TOTP' => 'TOTP',
+      'HOTP' => 'HOTP',
+    ),
+    '#default_value' => 'TOTP',
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Create code'),
+  );
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_test_form($form, &$form_state) {
+  $result = db_select('users')->fields('users', array('uid', 'name'))->execute();
+  foreach ($result as $account) {
+    $options[$account->uid] = check_plain($account->name);
+  }
+
+  $form['uid'] = array(
+    '#title' => t('User'),
+    '#type' => 'select',
+    '#options' => $options,
+    '#required' => TRUE,
+  );
+  $form['code'] = array(
+    '#title' => t('Code'),
+    '#type' => 'textfield',
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Check code'),
+  );
+  return $form;
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_create_form_submit($form, $form_state) {
+  $uid = $form_state['values']['uid'];
+  $account = user_load($uid);
+  module_load_include('php', 'ga_login', 'ga_login.class');
+  $ga = new ga_loginGA(10);
+  if (isset($form_state['values']['approve_current_submit']) && $form_state['values']['approve_current']) {
+    if (module_exists('mobile_codes')) {
+      file_unmanaged_delete($form_state['values']['code_image_path']);
+    }
+    else if (module_exists('qr_codes')) {
+      $files = file_load_multiple(array(), array('filename' => basename($form_state['values']['code_image_path'])));
+      if ($files) {
+        $file = reset($files);
+        file_delete($file);
+      }
+    }
+  }
+  else {
+    $key = $ga->setUser($account->name . '@' . variable_get('site_name', 'Drupal'), $form_state['values']['tokentype']);
+    $url = $ga->createUrl($account->name . '@' . variable_get('site_name', 'Drupal'));
+    if (module_exists('mobile_codes')) {
+      $variables = array(
+        'data' => $url,
+        'attributes' => array(
+          '#preset' => 'ga_login',
+        ),
+      );
+      $img = theme('mobilecode', $variables);
+    }
+    else if (module_exists('qr_codes')) {
+      $variables = array('data' => $url, 'width' => 200, 'height' => 200, 'margin' => 0, 'attributes' => array());
+      $img = theme('qr_codes', $variables);
+      drupal_set_message($img);
+    }
+
+  }
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_test_form_submit($form, $form_state) {
+  // ini_set('display_errors', 1);
+  $uid = $form_state['values']['uid'];
+  $code = $form_state['values']['code'];
+  $account = user_load($uid);
+  module_load_include('php', 'ga_login', 'ga_login.class');
+  $ga = new ga_loginGA(10);
+  $keyok = $ga->authenticateUser($account->name . '@' . variable_get('site_name', 'Drupal'), $code);
+  if ($keyok) {
+    drupal_set_message('Authentication OK');
+  }
+  else {
+    drupal_set_message('Authentication failed');
+    drupal_set_message($ga->getErrorText());
+  }
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_login_block' || $form_id == 'user_login') {
+    $form['#validate'] = array(
+      'user_login_name_validate',
+      'ga_login_user_login_validate',
+      'user_login_authenticate_validate',
+      'user_login_final_validate',
+    );
+    $form['gacode'] = array(
+      '#type' => 'textfield',
+      '#title' => 'Code',
+      '#maxlength' => 6,
+      '#size' => 6,
+      '#required' => FALSE,
+    );
+
+    $form['name']['#weight'] = 1;
+    $form['pass']['#weight'] = 2;
+    $form['gacode']['#weight'] = 3;
+    $form['submit']['#weight'] = 4;
+    if (isset($form['links'])) {
+      $form['links']['#weight'] = 5;
+    }
+  }
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function ga_login_user_login_validate($form, &$form_state) {
+  $name = $form_state['values']['name'];
+  $code = $form_state['values']['gacode'];
+  $account = user_load_by_name($name);
+  if (!user_access('login without code', $account) || !empty($code)) {
+    module_load_include('php', 'ga_login', 'ga_login.class');
+    $ga = new ga_loginGA(10);
+    if ($ga->hasToken($name . '@' . variable_get('site_name', 'Drupal'))) {
+      $keyok = $ga->authenticateUser($name . '@' . variable_get('site_name', 'Drupal'), $code);
+      if (!$keyok) {
+        form_set_error('gacode', t("Your code isn't valid."));
+      }
+    }
+    else {
+      form_set_error('gacode');
+      unset($_GET['destination']);
+      drupal_set_message(t('You don\'t have a login code yet. This login will only work once. After you log in, you can go to your profile page to generate the GA login code.'), 'warning');
+      drupal_goto(user_pass_reset_url($account));
+    }
+  }
+}
+
+/**
+ * Implements hook_mobile_codes_default_mobile_codes_preset_alter().
+ */
+function ga_login_mobile_codes_default_mobile_codes_preset_alter(&$export) {
+  $preset = new stdClass;
+  $preset->disabled = FALSE; /* Edit this to true to make a default preset disabled initially */
+  $preset->api_version = 2;
+  $preset->name = 'ga_login';
+  $preset->provider = 'google';
+  $preset->defaults = array(
+    'width' => '200',
+    'height' => '200',
+    'output_encoding' => 'UTF-8',
+  );
+  $export['ga_login'] = $preset;
+}
