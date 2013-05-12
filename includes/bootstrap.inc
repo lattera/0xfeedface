@@ -8,7 +8,7 @@
 /**
  * The current system version.
  */
-define('VERSION', '7.22-dev');
+define('VERSION', '7.23-dev');
 
 /**
  * Core API compatibility.
@@ -1212,7 +1212,7 @@ function drupal_send_headers($default_headers = array(), $only_default = FALSE) 
       header($_SERVER['SERVER_PROTOCOL'] . ' ' . $value);
     }
     // Skip headers that have been unset.
-    elseif ($value) {
+    elseif ($value !== FALSE) {
       header($header_names[$name_lower] . ': ' . $value);
     }
   }
